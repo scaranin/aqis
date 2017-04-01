@@ -1,0 +1,468 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="aqis" id="Project_11d9420c" template="Default" database="PostgreSQL" >
+	<comment><![CDATA[Электронная очередь / Электронная регистратура]]></comment>
+	<schema name="basket" schemaname="basket" >
+		<comment><![CDATA[Схема для работы с таблицами заказов]]></comment>
+		<table name="basket" >
+			<comment><![CDATA[Корзина клиента]]></comment>
+			<column name="id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор корзины]]></comment>
+			</column>
+			<column name="basket_num" type="varchar" length="15" jt="12" >
+				<comment><![CDATA[Номер заказа]]></comment>
+			</column>
+			<column name="customer_id" type="numeric" jt="2" >
+				<comment><![CDATA[Код клиента]]></comment>
+			</column>
+			<column name="product_id" type="numeric" jt="2" >
+				<comment><![CDATA[Код продукта]]></comment>
+			</column>
+			<column name="resource_id" type="numeric" jt="2" >
+				<comment><![CDATA[Код ресурса]]></comment>
+			</column>
+			<column name="date_plan" type="date" jt="91" >
+				<comment><![CDATA[Плановая дата выполнения заказа]]></comment>
+			</column>
+			<column name="date_fact" type="date" jt="91" >
+				<comment><![CDATA[Фактическая дата исполнения заказа]]></comment>
+			</column>
+			<column name="basket_status_id" type="numeric" jt="2" >
+				<comment><![CDATA[Статус заказа]]></comment>
+			</column>
+			<index name="pk_basket" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="idx_basket" unique="NORMAL" >
+				<column name="basket_status_id" />
+			</index>
+			<index name="idx_basket_0" unique="NORMAL" >
+				<column name="customer_id" />
+			</index>
+			<index name="idx_basket_1" unique="NORMAL" >
+				<column name="product_id" />
+			</index>
+			<index name="idx_basket_2" unique="NORMAL" >
+				<column name="resource_id" />
+			</index>
+			<fk name="fk_basket" to_schema="basket" to_table="basket_status" >
+				<fk_column name="basket_status_id" pk="id" />
+			</fk>
+			<fk name="fk_basket_0" to_schema="customer" to_table="customer" >
+				<fk_column name="customer_id" pk="id" />
+			</fk>
+			<fk name="fk_basket_1" to_schema="product" to_table="product" >
+				<fk_column name="product_id" pk="id" />
+			</fk>
+			<fk name="fk_basket_2" to_schema="resource" to_table="resource" >
+				<fk_column name="resource_id" pk="id" />
+			</fk>
+		</table>
+		<table name="basket_status" >
+			<comment><![CDATA[Справочник статусов заказа]]></comment>
+			<column name="id" type="integer" jt="4" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор статуса заказа]]></comment>
+			</column>
+			<column name="status_name" type="varchar" length="100" jt="12" />
+			<index name="pk_basket_status" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+		</table>
+		<table name="basket_status_workflow" >
+			<comment><![CDATA[Статусная модель перехода заказов]]></comment>
+			<column name="from_status_id" type="integer" jt="4" >
+				<comment><![CDATA[Статус с которого переходит заказ]]></comment>
+			</column>
+			<column name="to_status_id" type="integer" length="1" jt="4" >
+				<comment><![CDATA[Статус на который переходит заказ]]></comment>
+			</column>
+			<index name="idx_basket_status_workflow" unique="NORMAL" >
+				<column name="from_status_id" />
+			</index>
+			<index name="idx_basket_status_workflow_0" unique="NORMAL" >
+				<column name="to_status_id" />
+			</index>
+			<fk name="fk_basket_status_workflow" to_schema="basket" to_table="basket_status" >
+				<fk_column name="from_status_id" pk="id" />
+			</fk>
+			<fk name="fk_basket_status_workflow_0" to_schema="basket" to_table="basket_status" >
+				<fk_column name="to_status_id" pk="id" />
+			</fk>
+		</table>
+		<view name="v_workplate" >
+			<comment><![CDATA[Именованый запрос. Витрина для текущего отображения работ]]></comment>
+			<view_script><![CDATA[SELECT b.date_plan, b.basket_num, p.product_name, r.resource_name   
+  FROM basket.basket b
+  JOIN customer.customer c on c.id = b.customer_id
+  JOIN product.product p on p.id = b.roduct_id 
+          
+  JOIN resource.resource r on r.id = b.resource_id
+ WHERE b.date_plan between to_date('01.01.2016', 'dd.mm.yyyy') 
+                       and to_date('31.12.2016', 'dd.mm.yyyy')
+ ORDER BY b.date_plan
+   ]]></view_script>
+		</view>
+	</schema>
+	<schema name="customer" schemaname="customer" >
+		<comment><![CDATA[Схема для работы с клиентами]]></comment>
+		<table name="customer" >
+			<comment><![CDATA[Клиент]]></comment>
+			<column name="id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор клиента]]></comment>
+			</column>
+			<column name="customer_template_id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Тип клиента. customer_template.template_id.]]></comment>
+			</column>
+			<column name="customer_name" type="varchar" length="100" jt="12" >
+				<comment><![CDATA[Наименование клиента]]></comment>
+			</column>
+			<column name="customer_desc" type="varchar" length="4000" jt="12" >
+				<comment><![CDATA[Краткая информация по клиенту, для отображаения пользователю.]]></comment>
+			</column>
+			<index name="pk_customer" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="idx_customer" unique="NORMAL" >
+				<column name="customer_template_id" />
+			</index>
+			<fk name="fk_customer" to_schema="customer" to_table="customer_template" >
+				<fk_column name="customer_template_id" pk="id" />
+				<comment><![CDATA[Тип клиента]]></comment>
+			</fk>
+		</table>
+		<table name="customer_field_value" >
+			<comment><![CDATA[Значения полей]]></comment>
+			<column name="field_value_id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор значения поля.]]></comment>
+			</column>
+			<column name="customer_id" type="numeric" jt="2" >
+				<comment><![CDATA[Код клиента]]></comment>
+			</column>
+			<column name="field_value_value" type="varchar" length="4000" jt="12" >
+				<comment><![CDATA[Значение поля]]></comment>
+			</column>
+			<column name="customer_template_field_id" type="numeric" jt="2" >
+				<comment><![CDATA[Идентификатор поля]]></comment>
+			</column>
+			<index name="pk_customer_field_values" unique="PRIMARY_KEY" >
+				<column name="field_value_id" />
+			</index>
+			<index name="idx_customer_field_value" unique="NORMAL" >
+				<column name="customer_id" />
+			</index>
+			<index name="idx_customer_field_value_0" unique="NORMAL" >
+				<column name="customer_template_field_id" />
+			</index>
+			<fk name="fk_customer_field_value" to_schema="customer" to_table="customer" >
+				<fk_column name="customer_id" pk="id" />
+				<comment><![CDATA[Связь по клиенту]]></comment>
+			</fk>
+			<fk name="fk_customer_field_value_0" to_schema="customer" to_table="customer_template_field" >
+				<fk_column name="customer_template_field_id" pk="id" />
+			</fk>
+		</table>
+		<table name="customer_template" >
+			<comment><![CDATA[Шаблоны клиентов.]]></comment>
+			<column name="id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор]]></comment>
+			</column>
+			<column name="template_name" type="varchar" length="100" jt="12" >
+				<comment><![CDATA[Наименование шаблона клиента]]></comment>
+			</column>
+			<column name="template_isactive" type="smallint" jt="5" >
+				<defo>1</defo>
+				<comment><![CDATA[Признак шаблона: 1- активен / 0 - не активен]]></comment>
+			</column>
+			<index name="pk_customer_template" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+		</table>
+		<table name="customer_template_field" >
+			<comment><![CDATA[Набор полей шаблона]]></comment>
+			<column name="id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор поля запроса]]></comment>
+			</column>
+			<column name="customer_template_id" type="numeric" jt="2" >
+				<comment><![CDATA[Тип клиента. customer_template.template_id.]]></comment>
+			</column>
+			<column name="field_name" type="varchar" length="100" jt="12" >
+				<comment><![CDATA[Наименование поля]]></comment>
+			</column>
+			<column name="field_allias" type="varchar" length="15" jt="12" >
+				<comment><![CDATA[Техническое наименование поля]]></comment>
+			</column>
+			<column name="field_type_id" type="numeric" jt="2" >
+				<comment><![CDATA[Тип поля. field_type.type_id]]></comment>
+			</column>
+			<column name="field_order_in" type="integer" jt="4" >
+				<comment><![CDATA[Порядок сортировки поля. Для отображения в интерфейсе]]></comment>
+			</column>
+			<index name="pk_customer_template_field" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="idx_customer_template_field" unique="NORMAL" >
+				<column name="customer_template_id" />
+			</index>
+			<index name="idx_customer_template_field_0" unique="NORMAL" >
+				<column name="field_type_id" />
+			</index>
+			<fk name="fk_customer_template_field" to_schema="customer" to_table="customer_template" >
+				<fk_column name="customer_template_id" pk="id" />
+			</fk>
+			<fk name="fk_customer_template_field_0" to_schema="customer" to_table="field_type" >
+				<fk_column name="field_type_id" pk="id" />
+			</fk>
+		</table>
+		<table name="field_type" >
+			<comment><![CDATA[Типы полей для клиента]]></comment>
+			<column name="id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор типа поля]]></comment>
+			</column>
+			<column name="field_type_name" type="varchar" length="4000" jt="12" >
+				<comment><![CDATA[Описание типа поля]]></comment>
+			</column>
+			<column name="field_type_alias" type="varchar" length="15" jt="12" >
+				<comment><![CDATA[Псевдоним наименования типа поля]]></comment>
+			</column>
+			<column name="field_mask" type="varchar" length="400" jt="12" >
+				<comment><![CDATA[Маска поля]]></comment>
+			</column>
+			<index name="pk_field_type" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+		</table>
+	</schema>
+	<schema name="product" schemaname="product" >
+		<comment><![CDATA[Схема для работы с продуктами]]></comment>
+		<table name="measure" >
+			<comment><![CDATA[Справочник измерений]]></comment>
+			<column name="id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор меры]]></comment>
+			</column>
+			<column name="measure_name" type="varchar" length="10" jt="12" >
+				<comment><![CDATA[Наименование меры]]></comment>
+			</column>
+			<index name="pk_measure" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+		</table>
+		<table name="product" >
+			<comment><![CDATA[Справочник продуктов]]></comment>
+			<column name="id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор продукта]]></comment>
+			</column>
+			<column name="product_name" type="varchar" length="100" jt="12" >
+				<comment><![CDATA[Наименование продукта]]></comment>
+			</column>
+			<column name="measure_id" type="numeric" jt="2" >
+				<comment><![CDATA[Единица измерения]]></comment>
+			</column>
+			<column name="product_isactive" type="numeric" jt="2" >
+				<defo>1</defo>
+				<comment><![CDATA[Признак продукта: 1- активен / 0 - не активен]]></comment>
+			</column>
+			<index name="pk_product" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="idx_product" unique="NORMAL" >
+				<column name="measure_id" />
+			</index>
+			<fk name="fk_product" to_schema="product" to_table="measure" >
+				<fk_column name="measure_id" pk="id" />
+			</fk>
+		</table>
+		<table name="product_cost" >
+			<comment><![CDATA[Стоимость продукта]]></comment>
+			<column name="id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор стоимости]]></comment>
+			</column>
+			<column name="product_id" type="numeric" jt="2" >
+				<comment><![CDATA[Идентификатор продукта]]></comment>
+			</column>
+			<column name="date_beg" type="date" jt="91" >
+				<comment><![CDATA[Дата начала действия стоимости]]></comment>
+			</column>
+			<column name="date_end" type="date" jt="91" >
+				<comment><![CDATA[Дата окончания действия стоимости]]></comment>
+			</column>
+			<column name="measure_id" type="numeric" jt="2" />
+			<column name="cost" type="numeric" length="2" jt="2" >
+				<defo>0</defo>
+				<comment><![CDATA[Стоимость]]></comment>
+			</column>
+			<index name="pk_product_cost" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="idx_product_cost" unique="UNIQUE" >
+				<column name="product_id" />
+				<column name="date_beg" />
+				<column name="date_end" />
+			</index>
+			<index name="idx_product_cost_0" unique="NORMAL" >
+				<column name="product_id" />
+			</index>
+			<index name="idx_product_cost_1" unique="NORMAL" >
+				<column name="measure_id" />
+			</index>
+			<fk name="fk_product_cost" to_schema="product" to_table="product" >
+				<fk_column name="product_id" pk="id" />
+			</fk>
+			<fk name="fk_product_cost_0" to_schema="product" to_table="measure" >
+				<fk_column name="measure_id" pk="id" />
+			</fk>
+		</table>
+		<table name="product_need_resource" >
+			<comment><![CDATA[Справочник ресурсов, используемых продуктом]]></comment>
+			<column name="product_id" type="numeric" jt="2" >
+				<comment><![CDATA[Идентификатор продукта]]></comment>
+			</column>
+			<column name="resource_type_id" type="numeric" jt="2" >
+				<comment><![CDATA[Идентификатор ресурса]]></comment>
+			</column>
+			<index name="idx_product_need_resource" unique="UNIQUE" >
+				<column name="resource_type_id" />
+			</index>
+			<index name="idx_product_need_resource_0" unique="NORMAL" >
+				<column name="product_id" />
+			</index>
+			<fk name="fk_product_need_resource_0" to_schema="product" to_table="product" >
+				<fk_column name="product_id" pk="id" />
+			</fk>
+		</table>
+		<table name="product_time" >
+			<comment><![CDATA[Справочник. Регламентное время провередния работы]]></comment>
+			<column name="id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор настройки]]></comment>
+			</column>
+			<column name="product_id" type="numeric" jt="2" >
+				<comment><![CDATA[Код продукта]]></comment>
+			</column>
+			<column name="date_beg" type="date" jt="91" >
+				<comment><![CDATA[Дата начала действия регламентного времени]]></comment>
+			</column>
+			<column name="date_end" type="date" jt="91" >
+				<comment><![CDATA[Дата окончания действия регламентного времени]]></comment>
+			</column>
+			<column name="measure_id" type="numeric" jt="2" >
+				<comment><![CDATA[Единица измерения]]></comment>
+			</column>
+			<column name="time_value" type="integer" jt="4" >
+				<comment><![CDATA[Значение регламентного времени]]></comment>
+			</column>
+			<index name="pk_product_time" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="idx_product_time" unique="NORMAL" >
+				<column name="measure_id" />
+			</index>
+			<index name="idx_product_time_0" unique="NORMAL" >
+				<column name="product_id" />
+			</index>
+			<fk name="fk_product_time" to_schema="product" to_table="measure" >
+				<fk_column name="measure_id" pk="id" />
+			</fk>
+			<fk name="fk_product_time_0" to_schema="product" to_table="product" >
+				<fk_column name="product_id" pk="id" />
+			</fk>
+		</table>
+	</schema>
+	<schema name="resource" schemaname="resource" >
+		<comment><![CDATA[Схема для работы с ресурсами]]></comment>
+		<table name="resource" >
+			<comment><![CDATA[Справочник ресурсов. Ресурсом может выступать инструмент, мастер и т.д.]]></comment>
+			<column name="id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор ресурса]]></comment>
+			</column>
+			<column name="resource_type_id" type="numeric" jt="2" >
+				<comment><![CDATA[Тип ресурса]]></comment>
+			</column>
+			<column name="resource_name" type="varchar" length="100" jt="12" >
+				<comment><![CDATA[Наименование ресурса]]></comment>
+			</column>
+			<index name="pk_resource" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<index name="idx_resource" unique="NORMAL" >
+				<column name="resource_type_id" />
+			</index>
+			<fk name="fk_resource" to_schema="resource" to_table="resource_type" >
+				<fk_column name="resource_type_id" pk="id" />
+			</fk>
+		</table>
+		<table name="resource_scheduler" >
+			<comment><![CDATA[График загрузки ресурса]]></comment>
+			<column name="resource_id" type="numeric" jt="2" >
+				<comment><![CDATA[Идентификатор ресурса]]></comment>
+			</column>
+			<column name="date_beg" type="date" jt="91" >
+				<comment><![CDATA[Дата начала загрузки ресурса]]></comment>
+			</column>
+			<column name="date_end" type="date" jt="91" >
+				<comment><![CDATA[Дата окончания загрузки ресурса]]></comment>
+			</column>
+			<column name="basket_id" type="numeric" jt="2" />
+			<index name="idx_resource_scheduler" unique="NORMAL" >
+				<column name="resource_id" />
+			</index>
+			<fk name="fk_resource_scheduler" to_schema="resource" to_table="resource" >
+				<fk_column name="resource_id" pk="id" />
+			</fk>
+		</table>
+		<table name="resource_type" >
+			<comment><![CDATA[Тип ресурса]]></comment>
+			<column name="id" type="numeric" jt="2" mandatory="y" >
+				<comment><![CDATA[Уникальный идентификатор типа ресурса]]></comment>
+			</column>
+			<column name="resource_type_name" type="varchar" length="100" jt="12" >
+				<comment><![CDATA[Наименование типа ресурса]]></comment>
+			</column>
+			<index name="pk_resource_type" unique="PRIMARY_KEY" >
+				<column name="id" />
+			</index>
+			<fk name="fk_resource_type" to_schema="product" to_table="product_need_resource" >
+				<fk_column name="id" pk="resource_type_id" />
+			</fk>
+		</table>
+	</schema>
+	<layout name="Default Layout" id="Layout_1b485d2f" show_relation="columns" >
+		<entity schema="customer" name="customer_template" color="ffcccc" x="360" y="75" />
+		<entity schema="customer" name="customer_template_field" color="ffcccc" x="360" y="300" />
+		<entity schema="customer" name="customer" color="ffcccc" x="45" y="75" />
+		<entity schema="customer" name="customer_field_value" color="ffcccc" x="45" y="300" />
+		<entity schema="resource" name="resource" color="c1d8ee" x="1125" y="555" />
+		<entity schema="basket" name="basket_status" color="ffcc99" x="765" y="420" />
+		<entity schema="basket" name="basket_status_workflow" color="ffcc99" x="930" y="420" />
+		<entity schema="basket" name="basket" color="ffcc99" x="765" y="165" />
+		<entity schema="product" name="measure" color="ffffcc" x="1485" y="75" />
+		<entity schema="resource" name="resource_type" color="c1d8ee" x="1290" y="555" />
+		<entity schema="resource" name="resource_scheduler" color="c1d8ee" x="1125" y="735" />
+		<entity schema="customer" name="field_type" color="ffcccc" x="585" y="300" />
+		<entity schema="product" name="product_time" color="ffffcc" x="1335" y="270" />
+		<entity schema="product" name="product" color="cccc00" x="1125" y="75" />
+		<entity schema="product" name="product_cost" color="ffffcc" x="1335" y="120" />
+		<entity schema="basket" name="v_workplate" color="c1d8ee" x="975" y="240" />
+		<entity schema="product" name="product_need_resource" color="ccffcc" x="1200" y="435" />
+		<group name="group_customer" color="c4e0f9" >
+			<entity schema="customer" name="customer" />
+			<entity schema="customer" name="customer_field_value" />
+			<entity schema="customer" name="customer_template" />
+			<entity schema="customer" name="customer_template_field" />
+			<entity schema="customer" name="field_type" />
+		</group>
+		<group name="group_product" color="ffffcc" >
+			<entity schema="product" name="measure" />
+			<entity schema="product" name="product" />
+			<entity schema="product" name="product_cost" />
+			<entity schema="product" name="product_time" />
+		</group>
+		<group name="group_resource" color="ffccff" >
+			<entity schema="resource" name="resource" />
+			<entity schema="resource" name="resource_scheduler" />
+			<entity schema="resource" name="resource_type" />
+		</group>
+		<group name="group_basket" color="ccccff" >
+			<entity schema="basket" name="basket" />
+			<entity schema="basket" name="basket_status" />
+			<entity schema="basket" name="basket_status_workflow" />
+		</group>
+	</layout>
+</project>
